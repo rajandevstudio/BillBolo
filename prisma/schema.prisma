@@ -1,0 +1,42 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url = env("DATABASE_URL")
+}
+// 📦 PRODUCT CATALOG (Smart Inventory)
+// This lets the AI look up prices instead of guessing.
+model Product {
+  id        String   @id @default(uuid())
+  name      String
+  price     Float
+  
+  // Link to the Shopkeeper (Clerk User ID)
+  userId    String   
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Index for faster lookups by user
+  @@index([userId])
+}
+
+// 🧾 INVOICE HISTORY
+model Invoice {
+  id             String   @id @default(uuid())
+  invoiceNumber  String
+  customerName   String
+  customerPhone  String?
+  totalAmount    Float
+  status         String   @default("PAID") // Options: "PAID", "UNPAID"
+  
+  // JSON String of items: [{ "desc": "Samosa", "qty": 2, ... }]
+  items          String   
+  
+  userId         String
+  createdAt      DateTime @default(now())
+  
+  @@index([userId])
+}
