@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 import { aiService } from "@/services/ai.service";
 import { invoiceService } from "@/services/invoice.service";
 import { whatsappService } from '@/services/whatsapp.service';
+import { voiceQueue } from '@/queue/queue';
 
 export const dynamic = 'force-dynamic'; // Required for Next.js Webhooks
 
@@ -28,52 +29,33 @@ export async function POST(req: NextRequest) {
     const message = body.entry?.[0]?.changes?.[0]?.value?.messages?.[0];
 
     if (!message?.audio) {
-      return new NextResponse('No Audio', { status: 200 }); // 200 OK prevents WhatsApp retries
+      return new NextResponse("No Audio", { status: 200 });
     }
 
-    console.log("📨 Processing Voice Note...");
+    const messageId = message.id;
+    const audioUrl = message.audio.id;
+    const from = message.from; // WhatsApp sender number
 
-    // A. Download Audio
-    const audioBase64 = await whatsappService.downloadMedia(message.audio.id);
-    if (!audioBase64) throw new Error("Failed to download audio");
-
-    // B. AI Extraction
-    const extraction = await aiService.extractInvoiceDetails(audioBase64);
-
-    // C. Calculation & Logic
-    const calculation = invoiceService.calculate(extraction.items);
-
-    // D. Save to Database (Prisma)
-    // NOTE: In production, fetch the correct userId based on the phone number
-    const DEFAULT_USER_ID = process.env.DEFAULT_OWNER_ID || "user_placeholder"; 
-
-    await prisma.invoice.create({
-      data: {
-        invoiceNumber: calculation.invoiceNum,
-        customerName: extraction.customer_name || "Cash Customer",
-        customerPhone: message.from,
-        totalAmount: calculation.grandTotal,
-        status: "PAID",
-        items: JSON.stringify(calculation.items),
-        userId: DEFAULT_USER_ID
-      }
+    // 🔥 Find shopkeeper by phone
+    const user = await prisma.user.findUnique({
+      where: { phone: from },
     });
 
-    // E. Generate & Send PDF
-    const pdfPath = await invoiceService.generatePDF(
-      { customerName: extraction.customer_name || "Cash Customer" },
-      calculation
-    );
-
-    const mediaId = await whatsappService.uploadMedia(pdfPath);
-    if (mediaId) {
-      await whatsappService.sendDocument(message.from, mediaId, "Here is your invoice! 🧾");
+    if (!user) {
+      console.log("❌ Unknown number:", from);
+      return new NextResponse("Unknown number", { status: 200 });
     }
 
-    return new NextResponse('Success', { status: 200 });
+    await voiceQueue.add("process-voice", {
+      messageId,
+      audioUrl,
+      userId: user.id,
+      phone: from,
+    });
 
+    return new NextResponse("Queued", { status: 200 });
   } catch (error) {
     console.error("❌ Webhook Error:", error);
-    return new NextResponse('Internal Error', { status: 500 });
+    return new NextResponse("Internal Error", { status: 500 });
   }
 }
