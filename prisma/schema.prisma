@@ -4,18 +4,19 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url = env("DATABASE_URL")
+  url      = env("DATABASE_URL")
 }
-// 📦 PRODUCT CATALOG (Smart Inventory)
+
 // This lets the AI look up prices instead of guessing.
 model Product {
-  id        String   @id @default(uuid())
-  name      String
-  price     Float
-  
+  id    String @id @default(uuid())
+  name  String
+  price Float
+
   // Link to the Shopkeeper (Clerk User ID)
-  userId    String   
-  
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -25,18 +26,34 @@ model Product {
 
 // 🧾 INVOICE HISTORY
 model Invoice {
-  id             String   @id @default(uuid())
-  invoiceNumber  String
-  customerName   String
-  customerPhone  String?
-  totalAmount    Float
-  status         String   @default("PAID") // Options: "PAID", "UNPAID"
-  
+  id            String  @id @default(uuid())
+  invoiceNumber String
+  customerName  String
+  customerPhone String?
+  totalAmount   Float
+  status        String  @default("PAID") // Options: "PAID", "UNPAID"
+
   // JSON String of items: [{ "desc": "Samosa", "qty": 2, ... }]
-  items          String   
-  
-  userId         String
-  createdAt      DateTime @default(now())
-  
+  items     Json
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+
   @@index([userId])
+}
+
+model User {
+  id          String  @id @default(cuid())
+  clerkUserId String  @unique
+  phone       String  @unique // ← IMPORTANT
+  email       String?
+  name        String?
+
+  products Product[]
+  invoices Invoice[]
+}
+
+model ProcessedMessage {
+  id        String   @id
+  createdAt DateTime @default(now())
 }

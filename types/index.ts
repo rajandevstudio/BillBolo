@@ -1,26 +1,18 @@
-// types/index.ts
 
-export interface InvoiceItem {
+
+/* ================================
+   After validation (Invoice layer)
+================================= */
+export interface ValidatedInvoiceItem {
   desc: string;
   qty: number;
   rate: number;
-  amount?: number; // Optional because we calculate it later
+  amount: number;
 }
 
-export interface InvoiceExtraction {
-  customer_name: string | null;
-  items: InvoiceItem[];
-}
-
-export interface CalculatedInvoice {
-  items: Required<InvoiceItem>[]; // 'amount' is now required
-  subtotal: number;
-  taxAmount: number;
-  grandTotal: number;
-  invoiceNum: string;
-  dateStr: string;
-}
-
+/* ================================
+   Shop configuration
+================================= */
 export interface ShopConfig {
   name: string;
   address: string;
@@ -28,12 +20,13 @@ export interface ShopConfig {
   gstin?: string;
 }
 
-// Define the shape of our Invoice data for TypeScript
-export interface InvoiceWithDetails {
-  id: string;
-  invoiceNumber: string;
-  customerName: string;
-  createdAt: Date;
-  status: string;
-  totalAmount: number;
-};  
+
+export interface ExtractedInvoice {
+  shop_name: string;
+  customer_name: string;
+  items: Array<{
+    description: string; // Renamed 'desc' to 'description' to match your calculation lib
+    qty: number;
+    rate: number;
+  }>;
+}

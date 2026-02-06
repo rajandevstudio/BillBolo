@@ -1,15 +1,25 @@
 'use server';
 
+import { ensureUser } from "@/lib/user";
 import { productService } from "@/services/products.service";
 import { auth } from "@clerk/nextjs/server";
 import { revalidatePath } from "next/cache";
 
-export async function addProduct(formData: FormData) {
-  const { userId } = await auth();
+export async function addProduct(formData: FormData | {name:string, price:string}) {
+  const user = await ensureUser();
+  const userId = user?.id;
   if (!userId) return;
 
-  const name = formData.get("name")?.toString();
-  const priceString = formData.get("price")?.toString();
+  let name: string;
+  let priceString: string;
+
+  if (formData instanceof FormData) {
+    name = formData.get("name")?.toString()!;
+    priceString = formData.get("price")?.toString()!;
+  } else {
+    name = formData.name;
+    priceString = formData.price;
+  }
 
   // Basic Validation
   if (!name || !priceString) return;
@@ -21,7 +31,8 @@ export async function addProduct(formData: FormData) {
 }
 
 export async function deleteProduct(productId: string) {
-  const { userId } = await auth();
+  const user = await ensureUser();
+  const userId = user?.id;
   if (!userId) return;
 
   await productService.deleteProduct(userId, productId);

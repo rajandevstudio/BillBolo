@@ -1,41 +1,89 @@
 // services/ai.service.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { InvoiceExtraction } from "@/types";
+import { Product } from "@prisma/client";
+
+type ExtractedItem = {
+  name: string;
+  qty: number;
+};
 
 export class AIService {
-  private genAI: GoogleGenerativeAI;
   private model: any;
 
   constructor() {
-    if (!process.env.GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
-    this.genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    this.model = this.genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("Missing GEMINI_API_KEY");
+    }
+
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    this.model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
   }
 
-  async extractInvoiceDetails(audioBase64: string): Promise<InvoiceExtraction> {
-    try {
-      const prompt = `
-        You are a billing API. Extract invoice details from this audio.
-        Return JSON ONLY: { "customer_name": "Name or null", "items": [{ "desc": "Item", "qty": 1, "rate": 0 }] }
-        Rules: Default missing prices to realistic INR values. Default missing qty to 1.
-      `;
+  /**
+   * STEP 1 — Convert speech to plain text
+   */
+  async speechToText(audioBase64: string): Promise<string> {
+    const prompt = `
+You are a speech transcription engine for Indian shopkeepers.
+Return ONLY the spoken text. No explanation.
+and translate it to english.
+`;
 
-      const result = await this.model.generateContent({
-        contents: [{
+    const result = await this.model.generateContent({
+      contents: [
+        {
           role: "user",
           parts: [
-            { inlineData: { mimeType: "audio/mp3", data: audioBase64 } },
-            { text: prompt }
-          ]
-        }]
-      });
+            { inlineData: { mimeType: "audio/wav", data: audioBase64 } },
+            { text: prompt },
+          ],
+        },
+      ],
+    });
 
-      const text = result.response.text().replace(/```json|```/g, "").trim();
-      return JSON.parse(text);
-    } catch (error) {
-      console.error("AI Service Error:", error);
-      return { customer_name: "Cash Customer", items: [] }; // Safe fallback
-    }
+    return result.response.text().trim();
+  }
+
+  /**
+   * STEP 2 — Convert text to items using catalog grounding
+   */
+  async extractItemsFromText(
+    text: string,
+    catalog: Product[]
+  ): Promise<{ customer_name: string | null; items: ExtractedItem[] }> {
+    const catalogList = catalog.map((p) => p.name).join(", ");
+
+    const prompt = `
+You are a billing parser.
+
+Shop Catalog:
+${catalogList}
+
+From the text below, extract:
+- customer_name (if mentioned, else null)
+- items with name EXACTLY matching from catalog
+- qty (default 1 if missing)
+
+Return ONLY JSON:
+{
+  "customer_name": "string or null",
+  "items": [{ "name": "exact catalog name", "qty": number }]
+}
+
+If an item is not in catalog, ignore it.
+
+Text:
+"${text}"
+`;
+    console.log(prompt);
+
+
+    const result = await this.model.generateContent(prompt);
+
+    const clean = result.response.text().replace(/```json|```/g, "").trim();
+    console.log(clean);
+
+    return JSON.parse(clean);
   }
 }
 
