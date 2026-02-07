@@ -22,6 +22,7 @@ new Worker<VoiceJobData>(
   async (job) => {
     try {
     const { messageId, audioUrl, userId, phone } = job.data;
+    const directAudioBase64 = (job.data as any).directAudioBase64;
 
     console.log("🎙 Processing:", messageId);
 
@@ -33,12 +34,19 @@ new Worker<VoiceJobData>(
     if (already) return;
 
     // ✅ 2. Download audio
-    const audioBuffer = await whatsappService.downloadAudio(audioUrl);
-    console.log("Audio downloaded");
+    let audioBase64: Base64URLString;
+    if (directAudioBase64) {
+      audioBase64 = directAudioBase64
+      console.log("Using direct audio upload");
+    } else {
+      const audioBuffer = await whatsappService.downloadAudio(audioUrl);
+      audioBase64 = audioBuffer.toString("base64");
+
+      console.log("Audio downloaded");
+    }
 
 
     // (after ffmpeg clean in future)
-    const audioBase64 = audioBuffer.toString("base64");
 
     // ✅ 3. Get normalized catalog
     const catalog: CatalogItem[] = await productService.getCatalog(userId);
