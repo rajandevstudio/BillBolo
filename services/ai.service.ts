@@ -61,7 +61,7 @@ ${catalogList}
 
 From the text below, extract:
 - customer_name (if mentioned, else null)
-- items with name EXACTLY matching from catalog
+- items with name EXACTLY matching or closest match(90%) from catalog
 - qty (default 1 if missing)
 
 Return ONLY JSON:

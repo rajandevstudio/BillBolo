@@ -10,12 +10,14 @@ import {
   ChevronRight,
   Menu,
   X,
+  Mic,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const navItems = [
   { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
   { name: "Products", href: "/products", icon: Package },
+  { name: "Voice Invoice", href: "/voice", icon: Mic },
 ];
 
 export default function Sidebar() {
