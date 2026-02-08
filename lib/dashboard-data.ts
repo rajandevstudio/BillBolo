@@ -12,6 +12,7 @@ export async function getDashboardData(userId: string) {
         customerName: true,
         totalAmount: true,
         createdAt: true,
+        items:true
       },
     }),
     prisma.invoice.aggregate({

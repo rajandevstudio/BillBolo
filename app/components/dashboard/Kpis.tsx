@@ -1,5 +1,5 @@
 import { KpiCard } from "./KPI";
-import { formatINR } from "./TableContent";
+import { formatINR } from "./TableUtils";
 
 export function KPIs({
   totalRevenue,
