@@ -1,5 +1,6 @@
 import { Suspense } from "react";
-import { InvoiceTable, TableSkeleton } from "./TableContent";
+import { InvoiceTable } from "./TableContent";
+import { TableSkeleton } from "./TableUtils";
 
 export function InvoiceSection({ invoices }: any) {
   return (

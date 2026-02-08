@@ -30,3 +30,19 @@ export interface ExtractedInvoice {
     rate: number;
   }>;
 }
+
+export interface InvoiceItem {
+  desc: string;
+    qty: number;
+    rate: number;
+}
+
+export interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  customerName: string;
+  createdAt: Date;
+  totalAmount: number;
+  pdfUrl?: string;
+  items: InvoiceItem[];
+}
